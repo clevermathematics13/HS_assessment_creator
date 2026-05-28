@@ -14,6 +14,7 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
   const [supabaseUrl, setSupabaseUrl] = useState(settings.supabaseUrl);
   const [supabaseKey, setSupabaseKey] = useState(settings.supabaseKey);
   const [useSupabase, setUseSupabase] = useState(settings.useSupabase);
+  const [theme, setTheme] = useState(settings.theme);
   const [showKey, setShowKey] = useState(false);
   const [showSupabaseKey, setShowSupabaseKey] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -28,6 +29,7 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
       supabaseUrl: supabaseUrl.trim(),
       supabaseKey: supabaseKey.trim(),
       useSupabase,
+      theme,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -119,6 +121,28 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
         />
         <span className="label-hint">
           Examples: gpt-4o, gpt-4-turbo, gpt-3.5-turbo, claude-3-opus-20240229
+        </span>
+      </div>
+
+      <hr style={{ margin: '32px 0', border: 'none', borderTop: '1px solid var(--color-border)' }} />
+
+      <div className="section-header" style={{ marginTop: 0 }}>
+        <h3>Appearance</h3>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="theme">Theme</label>
+        <select
+          id="theme"
+          className="form-select"
+          value={theme}
+          onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+        >
+          <option value="light">☀️ Light Mode</option>
+          <option value="dark">🌙 Dark Mode</option>
+        </select>
+        <span className="label-hint">
+          Choose your preferred color scheme for the application.
         </span>
       </div>
 

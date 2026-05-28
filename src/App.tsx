@@ -29,6 +29,11 @@ export default function App() {
   const [viewingResult, setViewingResult] = useState<AssessmentResult | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Apply theme on mount and when settings change
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }, [settings.theme]);
+
   // Load templates and history on mount
   useEffect(() => {
     const loadData = async () => {

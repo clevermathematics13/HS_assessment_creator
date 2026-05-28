@@ -261,6 +261,7 @@ export interface AppSettings {
   supabaseUrl: string;
   supabaseKey: string;
   useSupabase: boolean;
+  theme: 'light' | 'dark';
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -270,6 +271,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   supabaseUrl: '',
   supabaseKey: '',
   useSupabase: false,
+  theme: 'light',
 };
 
 // The API key and Supabase key are kept only in sessionStorage (cleared on tab close) 

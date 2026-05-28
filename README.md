@@ -8,9 +8,14 @@ A browser-based tool for generating AI-powered high school assessments. Create q
 - 📝 **Template System** - Create and customize reusable assessment templates
 - 🤖 **AI-Powered** - Uses OpenAI-compatible APIs (OpenAI, Groq, Ollama, etc.)
 - 📁 **File Upload** - Generate assessments from source materials
-- 📜 **History** - Keep track of all generated assessments
+- 📜 **History** - Keep track of all generated assessments with search & filtering
 - ☁️ **Cloud Storage** - Optional Supabase integration for cross-device sync
 - 🔒 **Privacy-First** - API keys stored only in sessionStorage (cleared on tab close)
+- 📄 **PDF Export** - Export assessments as professionally formatted PDFs
+- ✏️ **Edit Assessments** - Edit generated assessments before saving
+- 🔍 **Search & Filter** - Quickly find assessments by content, template, or date
+- 📤 **Template Import/Export** - Share templates with colleagues as JSON files
+- 🌙 **Dark Mode** - Easy on the eyes with automatic theme switching
 
 ## Quick Start
 
@@ -42,6 +47,36 @@ Visit `http://localhost:5173` in your browser.
 3. Enter your prompt (e.g., "10 questions on the American Revolution for 10th grade")
 4. (Optional) Upload a document as source material
 5. Click **Generate Assessment**
+6. View, edit, copy, or export your assessment as PDF or TXT
+
+## New Features Guide
+
+### PDF Export
+Click the **📄 PDF** button on any generated assessment to download it as a professionally formatted PDF document. Perfect for printing or sharing with students.
+
+### Edit Assessments
+1. Generate an assessment
+2. Click **✏️ Edit** to make changes
+3. Modify the content as needed
+4. Click **💾 Save** to update
+
+### Search & Filter History
+In the **History** tab:
+- Use the search bar to find assessments by content, template name, or prompt
+- Sort by newest or oldest first
+- Click on any assessment to view details
+
+### Template Import/Export
+Share templates with colleagues:
+- **Export Single**: Click **📤** button next to any template
+- **Export All**: Click **📤 Export All** in Templates tab
+- **Import**: Click **📥 Import** and select a JSON file
+
+### Dark Mode
+1. Go to **Settings** tab
+2. Under **Appearance**, select **🌙 Dark Mode**
+3. Theme preference is saved automatically
+
 
 ## Cloud Storage Setup (Optional)
 

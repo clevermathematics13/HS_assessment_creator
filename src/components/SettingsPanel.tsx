@@ -26,8 +26,9 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
       </div>
 
       <p className="section-hint">
-        Configure your AI provider. Your API key is stored only in your browser's local storage and
-        is never sent to any server other than your configured API base URL.
+        Configure your AI provider. Your API key is stored only in <strong>sessionStorage</strong>{' '}
+        (cleared automatically when you close this browser tab) and is never sent anywhere other
+        than your configured API base URL.
       </p>
 
       <div className="form-group">

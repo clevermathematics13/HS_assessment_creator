@@ -61,15 +61,26 @@ const DEFAULT_SETTINGS: AppSettings = {
   model: 'gpt-4o',
 };
 
+// The API key is kept only in sessionStorage (cleared on tab close) so it is
+// not written to the more persistent localStorage alongside other settings.
+const API_KEY_SESSION_KEY = 'hs_assessment_api_key';
+
 export function getSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as AppSettings) } : DEFAULT_SETTINGS;
+    const stored = raw ? (JSON.parse(raw) as Omit<AppSettings, 'apiKey'>) : {};
+    const apiKey = sessionStorage.getItem(API_KEY_SESSION_KEY) ?? '';
+    return { ...DEFAULT_SETTINGS, ...stored, apiKey };
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
 export function saveSettings(settings: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  // Persist non-sensitive fields to localStorage.
+  const { apiKey, ...rest } = settings;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
+  // Store the API key only in sessionStorage so it is cleared when the tab is closed.
+  sessionStorage.setItem(API_KEY_SESSION_KEY, apiKey);
 }
+

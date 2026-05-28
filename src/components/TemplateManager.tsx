@@ -81,7 +81,7 @@ export function TemplateManager({
       </div>
 
       <p className="section-hint">
-        Select a template to use when generating assessments. Edit or create your own to customise
+        Select a template to use when generating assessments. Edit or create your own to customize
         formatting and AI instructions.
       </p>
 

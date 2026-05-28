@@ -175,6 +175,52 @@ export async function saveToHistory(result: AssessmentResult): Promise<void> {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
 }
 
+export async function updateAssessment(result: AssessmentResult): Promise<void> {
+  const settings = getSettings();
+  
+  if (settings.useSupabase && settings.supabaseUrl && settings.supabaseKey) {
+    try {
+      const supabase = initSupabase(settings.supabaseUrl, settings.supabaseKey);
+      const dbAssessment = assessmentToDbAssessment(result);
+      // Type cast to work around Supabase typing issues
+      const { error } = await (supabase.from('assessments') as any).update(dbAssessment).eq('id', result.id);
+      
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.error('Failed to update assessment in Supabase, falling back to localStorage:', error);
+      // Fallback to localStorage on error
+    }
+  }
+  
+  // Use localStorage
+  const history = await getHistorySync();
+  const updated = history.map((item) => (item.id === result.id ? result : item));
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+}
+
+export async function deleteAssessment(id: string): Promise<void> {
+  const settings = getSettings();
+  
+  if (settings.useSupabase && settings.supabaseUrl && settings.supabaseKey) {
+    try {
+      const supabase = initSupabase(settings.supabaseUrl, settings.supabaseKey);
+      const { error } = await supabase.from('assessments').delete().eq('id', id);
+      
+      if (error) throw error;
+      return;
+    } catch (error) {
+      console.error('Failed to delete assessment from Supabase, falling back to localStorage:', error);
+      // Fallback to localStorage on error
+    }
+  }
+  
+  // Use localStorage
+  const history = await getHistorySync();
+  const filtered = history.filter((item) => item.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
+}
+
 export async function clearHistory(): Promise<void> {
   const settings = getSettings();
   

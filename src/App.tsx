@@ -6,6 +6,8 @@ import {
   deleteTemplate,
   getHistory,
   saveToHistory,
+  updateAssessment,
+  deleteAssessment,
   clearHistory,
   getSettings,
   saveSettings,
@@ -95,6 +97,22 @@ export default function App() {
     setHistory([]);
   };
 
+  const handleUpdateAssessment = async (updated: AssessmentResult) => {
+    await updateAssessment(updated);
+    const refreshed = await getHistory();
+    setHistory(refreshed);
+    setViewingResult(updated);
+  };
+
+  const handleDeleteAssessment = async (id: string) => {
+    await deleteAssessment(id);
+    const refreshed = await getHistory();
+    setHistory(refreshed);
+    if (viewingResult?.id === id) {
+      setViewingResult(null);
+    }
+  };
+
   const handleSaveSettings = (s: typeof settings) => {
     saveSettings(s);
     setSettings(s);
@@ -151,6 +169,7 @@ export default function App() {
                   <AssessmentOutput
                     result={viewingResult}
                     onClose={() => setViewingResult(null)}
+                    onUpdate={handleUpdateAssessment}
                   />
                 ) : (
                   <AssessmentCreator
@@ -178,6 +197,7 @@ export default function App() {
               <HistoryPanel
                 history={history}
                 onClear={handleClearHistory}
+                onDelete={handleDeleteAssessment}
                 onView={(result) => {
                   setViewingResult(result);
                   setTab('create');

@@ -1,6 +1,5 @@
 import type { Template, AssessmentResult } from '../types';
 import {
-  getSupabase,
   initSupabase,
   dbTemplateToTemplate,
   templateToDbTemplate,
@@ -55,7 +54,8 @@ export async function saveTemplate(template: Template): Promise<void> {
     try {
       const supabase = initSupabase(settings.supabaseUrl, settings.supabaseKey);
       const dbTemplate = templateToDbTemplate(template);
-      const { error } = await supabase.from('templates').upsert(dbTemplate, { onConflict: 'id' });
+      // Type cast to work around Supabase typing issues
+      const { error } = await (supabase.from('templates') as any).upsert([dbTemplate], { onConflict: 'id' });
       
       if (error) throw error;
       return;
@@ -111,7 +111,8 @@ async function seedDefaultTemplates(): Promise<void> {
   try {
     const supabase = initSupabase(settings.supabaseUrl, settings.supabaseKey);
     const dbTemplates = DEFAULT_TEMPLATES.map(templateToDbTemplate);
-    const { error } = await supabase.from('templates').insert(dbTemplates);
+    // Type cast to work around Supabase typing issues
+    const { error } = await (supabase.from('templates') as any).insert(dbTemplates);
     if (error) throw error;
   } catch (error) {
     console.error('Failed to seed default templates:', error);
@@ -156,7 +157,8 @@ export async function saveToHistory(result: AssessmentResult): Promise<void> {
     try {
       const supabase = initSupabase(settings.supabaseUrl, settings.supabaseKey);
       const dbAssessment = assessmentToDbAssessment(result);
-      const { error } = await supabase.from('assessments').insert(dbAssessment);
+      // Type cast to work around Supabase typing issues
+      const { error } = await (supabase.from('assessments') as any).insert([dbAssessment]);
       
       if (error) throw error;
       return;

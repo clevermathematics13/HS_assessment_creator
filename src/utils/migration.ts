@@ -36,8 +36,9 @@ export async function migrateLocalToSupabase(
     // Migrate templates
     if (templates.length > 0) {
       const dbTemplates = templates.map(templateToDbTemplate);
-      const { error: templatesError } = await supabase
-        .from('templates')
+      // Type cast to work around Supabase typing issues
+      const { error: templatesError } = await (supabase
+        .from('templates') as any)
         .upsert(dbTemplates, { onConflict: 'id' });
       
       if (templatesError) throw templatesError;
@@ -51,8 +52,9 @@ export async function migrateLocalToSupabase(
       const batchSize = 100;
       for (let i = 0; i < dbAssessments.length; i += batchSize) {
         const batch = dbAssessments.slice(i, i + batchSize);
-        const { error: assessmentsError } = await supabase
-          .from('assessments')
+        // Type cast to work around Supabase typing issues
+        const { error: assessmentsError } = await (supabase
+          .from('assessments') as any)
           .upsert(batch, { onConflict: 'id' });
         
         if (assessmentsError) throw assessmentsError;

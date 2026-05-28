@@ -18,11 +18,6 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { SettingsPanel } from './components/SettingsPanel';
 import './App.css';
 
-function initTemplates(): Template[] {
-  // Return empty array initially; will be loaded async
-  return [];
-}
-
 export default function App() {
   const [tab, setTab] = useState<AppTab>('create');
   const [templates, setTemplates] = useState<Template[]>([]);

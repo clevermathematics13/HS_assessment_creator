@@ -19,21 +19,54 @@ import { SettingsPanel } from './components/SettingsPanel';
 import './App.css';
 
 function initTemplates(): Template[] {
-  const stored = getTemplates();
-  if (stored.length > 0) return stored;
-  DEFAULT_TEMPLATES.forEach(saveTemplate);
-  return DEFAULT_TEMPLATES;
+  // Return empty array initially; will be loaded async
+  return [];
 }
 
 export default function App() {
   const [tab, setTab] = useState<AppTab>('create');
-  const [templates, setTemplates] = useState<Template[]>(initTemplates);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    () => initTemplates()[0]?.id ?? '',
-  );
-  const [history, setHistory] = useState<AssessmentResult[]>(getHistory);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [history, setHistory] = useState<AssessmentResult[]>([]);
   const [settings, setSettings] = useState(getSettings);
   const [viewingResult, setViewingResult] = useState<AssessmentResult | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load templates and history on mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [loadedTemplates, loadedHistory] = await Promise.all([
+          getTemplates(),
+          getHistory(),
+        ]);
+        
+        // Initialize with default templates if empty
+        if (loadedTemplates.length === 0) {
+          await Promise.all(DEFAULT_TEMPLATES.map(saveTemplate));
+          const refreshedTemplates = await getTemplates();
+          setTemplates(refreshedTemplates);
+          if (refreshedTemplates.length > 0) {
+            setSelectedTemplateId(refreshedTemplates[0].id);
+          }
+        } else {
+          setTemplates(loadedTemplates);
+          if (loadedTemplates.length > 0 && !selectedTemplateId) {
+            setSelectedTemplateId(loadedTemplates[0].id);
+          }
+        }
+        
+        setHistory(loadedHistory);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
 
   // Keep selectedTemplateId valid when templates change
   useEffect(() => {
@@ -42,25 +75,28 @@ export default function App() {
     }
   }, [templates, selectedTemplateId]);
 
-  const handleSaveTemplate = (tmpl: Template) => {
-    saveTemplate(tmpl);
-    setTemplates(getTemplates());
+  const handleSaveTemplate = async (tmpl: Template) => {
+    await saveTemplate(tmpl);
+    const refreshed = await getTemplates();
+    setTemplates(refreshed);
   };
 
-  const handleDeleteTemplate = (id: string) => {
-    deleteTemplate(id);
-    setTemplates(getTemplates());
+  const handleDeleteTemplate = async (id: string) => {
+    await deleteTemplate(id);
+    const refreshed = await getTemplates();
+    setTemplates(refreshed);
   };
 
-  const handleResult = (result: AssessmentResult) => {
-    saveToHistory(result);
-    setHistory(getHistory());
+  const handleResult = async (result: AssessmentResult) => {
+    await saveToHistory(result);
+    const refreshed = await getHistory();
+    setHistory(refreshed);
     setViewingResult(result);
     setTab('create');
   };
 
-  const handleClearHistory = () => {
-    clearHistory();
+  const handleClearHistory = async () => {
+    await clearHistory();
     setHistory([]);
   };
 
@@ -107,48 +143,57 @@ export default function App() {
 
       {/* Main content */}
       <main className="main-content">
-        {tab === 'create' && (
+        {loading ? (
+          <div className="loading-container">
+            <div className="loading-spinner">⏳</div>
+            <p>Loading...</p>
+          </div>
+        ) : (
           <>
-            {viewingResult ? (
-              <AssessmentOutput
-                result={viewingResult}
-                onClose={() => setViewingResult(null)}
-              />
-            ) : (
-              <AssessmentCreator
+            {tab === 'create' && (
+              <>
+                {viewingResult ? (
+                  <AssessmentOutput
+                    result={viewingResult}
+                    onClose={() => setViewingResult(null)}
+                  />
+                ) : (
+                  <AssessmentCreator
+                    templates={templates}
+                    selectedTemplateId={selectedTemplateId}
+                    onSelectTemplate={setSelectedTemplateId}
+                    onResult={handleResult}
+                    settings={settings}
+                  />
+                )}
+              </>
+            )}
+
+            {tab === 'templates' && (
+              <TemplateManager
                 templates={templates}
-                selectedTemplateId={selectedTemplateId}
-                onSelectTemplate={setSelectedTemplateId}
-                onResult={handleResult}
-                settings={settings}
+                selectedId={selectedTemplateId}
+                onSelect={setSelectedTemplateId}
+                onSave={handleSaveTemplate}
+                onDelete={handleDeleteTemplate}
               />
             )}
+
+            {tab === 'history' && (
+              <HistoryPanel
+                history={history}
+                onClear={handleClearHistory}
+                onView={(result) => {
+                  setViewingResult(result);
+                  setTab('create');
+                }}
+              />
+            )}
+
+            {tab === 'settings' && (
+              <SettingsPanel settings={settings} onSave={handleSaveSettings} />
+            )}
           </>
-        )}
-
-        {tab === 'templates' && (
-          <TemplateManager
-            templates={templates}
-            selectedId={selectedTemplateId}
-            onSelect={setSelectedTemplateId}
-            onSave={handleSaveTemplate}
-            onDelete={handleDeleteTemplate}
-          />
-        )}
-
-        {tab === 'history' && (
-          <HistoryPanel
-            history={history}
-            onClear={handleClearHistory}
-            onView={(result) => {
-              setViewingResult(result);
-              setTab('create');
-            }}
-          />
-        )}
-
-        {tab === 'settings' && (
-          <SettingsPanel settings={settings} onSave={handleSaveSettings} />
         )}
       </main>
     </div>

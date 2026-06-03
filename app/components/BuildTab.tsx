@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import type {
   Assessment, Question, SubQuestion,
   CourseLevel, QuestionType, ActionWord, CognitiveLevel, WorkingSpace,
+  RepoFileSummary,
 } from '@/lib/types';
 import { newQuestion, newSubQuestion, computeTotalMarks, newAssessment } from '@/lib/assessment-utils';
 
@@ -32,14 +33,17 @@ const WORKING_SPACES: { value: WorkingSpace; label: string; hint: string }[] = [
   { value: 'procedural', label: 'Procedural', hint: '~5 cm' },
   { value: 'extended',   label: 'Extended',   hint: '~7 cm' },
 ];
-
 const EXAMPLE_PROMPTS = [
   'KA #3, Math 9 Extended, Block 4, May 2025, 50 min, GDC required. Topics: compound inequalities (2 parts), angle relationships with parallel lines (3 parts), special right triangles with surds (2 parts), system of equations, graphing system of inequalities, and a school-context word problem with 5 parts.',
   'Math 9 Standard, Block 2, KA #2, March 2025, 50 min, no GDC. 5 questions: simple linear inequalities, supplementary and vertical angles, Pythagorean theorem with clean numbers, system of equations with one coefficient equal to 1, and a simple word problem about buying school supplies.',
   'Math 9 Extended KA #1, Block 3, February 2025, 45 min, GDC required. Focus on inequalities only — 3 compound inequality questions (algebraic, interval, number line), 1 absolute value inequality, and 1 real-world inequality modeling question.',
 ];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+const TYPE_ICONS: Record<string, string> = {
+  pdf: '📄', docx: '📝', md: '📋', tex: '🔢', txt: '📃', google: '🌐',
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 const inputCls = 'w-full bg-[#13131a] border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-[rgb(0,102,204)] transition-colors';
 const labelCls = 'block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1';
 
@@ -71,7 +75,7 @@ function LevelBadge({ level, onClick }: { level: CognitiveLevel; onClick: () => 
   );
 }
 
-// ─── SubQuestion editor ──────────────────────────────────────────────────────
+// ─── SubQuestion editor ───────────────────────────────────────────────────────
 function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
   sq: SubQuestion; letter: string;
   onUpdate: (p: Partial<SubQuestion>) => void;
@@ -93,7 +97,6 @@ function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
           )}
         </div>
       </div>
-
       <div>
         <span className={labelCls}>Action word</span>
         <div className="flex flex-wrap gap-1.5">
@@ -107,14 +110,12 @@ function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
           ))}
         </div>
       </div>
-
       <div>
         <span className={labelCls}>Prompt</span>
         <textarea value={sq.prompt} onChange={e => onUpdate({ prompt: e.target.value })}
           rows={2} placeholder={`${sq.actionWord} the value of ...`}
           className={inputCls + ' resize-none font-mono text-xs'} />
       </div>
-
       <div className="grid grid-cols-2 gap-3">
         <div>
           <span className={labelCls}>Working space</span>
@@ -137,7 +138,6 @@ function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
           </div>
         </div>
       </div>
-
       <div>
         <span className={labelCls}>Diagram hint
           <span className="normal-case font-normal text-gray-600 ml-1">(optional — TikZ description)</span>
@@ -146,7 +146,6 @@ function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
           placeholder="e.g. right triangle, legs √3 and √6, yellow fill, right angle at C"
           className={inputCls + ' text-xs'} />
       </div>
-
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <input type="checkbox" checked={sq.continuesOnNextPage}
           onChange={e => onUpdate({ continuesOnNextPage: e.target.checked })}
@@ -157,19 +156,16 @@ function SubQuestionEditor({ sq, letter, onUpdate, onRemove, canRemove }: {
   );
 }
 
-// ─── Question editor ─────────────────────────────────────────────────────────
+// ─── Question editor ──────────────────────────────────────────────────────────
 function QuestionEditor({ q, onUpdate, onRemove, canRemove }: {
-  q: Question;
-  onUpdate: (p: Partial<Question>) => void;
-  onRemove: () => void;
-  canRemove: boolean;
+  q: Question; onUpdate: (p: Partial<Question>) => void;
+  onRemove: () => void; canRemove: boolean;
 }) {
   const updateSQ = (idx: number, patch: Partial<SubQuestion>) =>
     onUpdate({ subQuestions: q.subQuestions.map((sq, i) => i === idx ? { ...sq, ...patch } : sq) });
   const addSQ = () => onUpdate({ subQuestions: [...q.subQuestions, newSubQuestion()] });
   const removeSQ = (idx: number) => onUpdate({ subQuestions: q.subQuestions.filter((_, i) => i !== idx) });
   const totalMark = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
-
   return (
     <div className="rounded-2xl border border-white/10 bg-[#0c0c14] overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
@@ -184,7 +180,6 @@ function QuestionEditor({ q, onUpdate, onRemove, canRemove }: {
             className="text-xs text-gray-600 hover:text-rose-400 transition-colors px-2 py-1">Remove</button>
         )}
       </div>
-
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -200,7 +195,6 @@ function QuestionEditor({ q, onUpdate, onRemove, canRemove }: {
             </select>
           </div>
         </div>
-
         <div>
           <span className={labelCls}>Question stem
             <span className="normal-case font-normal text-gray-600 ml-1">(intro before sub-parts, or leave blank)</span>
@@ -209,7 +203,6 @@ function QuestionEditor({ q, onUpdate, onRemove, canRemove }: {
             placeholder="e.g. Solve each inequality, writing the solution in algebraic, interval, and geometric representations."
             className={inputCls + ' resize-none text-sm'} />
         </div>
-
         <div className="space-y-3">
           {q.subQuestions.map((sq, idx) => (
             <SubQuestionEditor key={sq.id} sq={sq} letter={'abcdefghij'[idx]}
@@ -227,13 +220,63 @@ function QuestionEditor({ q, onUpdate, onRemove, canRemove }: {
   );
 }
 
-// ─── AI Panel ────────────────────────────────────────────────────────────────
+// ─── File selector chip ───────────────────────────────────────────────────────
+function FileChip({ file, selected, onToggle }: {
+  file: RepoFileSummary; selected: boolean; onToggle: () => void;
+}) {
+  return (
+    <button type="button" onClick={onToggle}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-medium transition-all ${
+        selected
+          ? 'border-[rgb(0,102,204)]/60 bg-[rgb(0,102,204)]/15 text-blue-300'
+          : 'border-white/8 bg-white/2 text-gray-600 hover:text-gray-400 hover:border-white/15'
+      }`}>
+      <span>{TYPE_ICONS[file.type] ?? '📄'}</span>
+      <span className="max-w-[120px] truncate">{file.name}</span>
+      {selected && <span className="text-blue-400">✓</span>}
+    </button>
+  );
+}
+
+// ─── AI Panel ─────────────────────────────────────────────────────────────────
 function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => void }) {
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [repoFiles, setRepoFiles] = useState<RepoFileSummary[]>([]);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [filesLoading, setFilesLoading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load repo files on mount
+  useEffect(() => {
+    fetch('/api/files')
+      .then(r => r.json())
+      .then((files: RepoFileSummary[]) => {
+        setRepoFiles(files);
+        // Select all by default
+        setSelectedFileIds(new Set(files.map(f => f.id)));
+      })
+      .catch(() => {})
+      .finally(() => setFilesLoading(false));
+  }, []);
+
+  const toggleFile = (id: string) => {
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedFileIds.size === repoFiles.length) {
+      setSelectedFileIds(new Set());
+    } else {
+      setSelectedFileIds(new Set(repoFiles.map(f => f.id)));
+    }
+  };
 
   const handleGenerate = async () => {
     if (!description.trim() || isLoading) return;
@@ -244,7 +287,10 @@ function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => 
       const res = await fetch('/api/build-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({
+          description,
+          selectedFileIds: Array.from(selectedFileIds),
+        }),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -267,7 +313,7 @@ function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => 
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 px-5 pt-5 pb-3 border-b border-white/8">
         <div className="flex items-center gap-2 mb-1">
@@ -275,20 +321,55 @@ function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => 
           <h2 className="text-xs font-bold text-gray-200 uppercase tracking-widest">AI Build</h2>
         </div>
         <p className="text-[11px] text-gray-500 leading-relaxed">
-          Describe your assessment in plain English. Claude will scaffold the full question structure for you to review and edit.
+          Describe your assessment. Claude reads your repository files and scaffolds the full structure.
         </p>
       </div>
 
-      {/* Input area */}
-      <div className="flex-1 flex flex-col px-5 py-4 gap-3 overflow-y-auto">
+      <div className="flex-1 flex flex-col px-5 py-4 gap-4 overflow-y-auto">
+        {/* Description */}
         <textarea
           ref={textareaRef}
           value={description}
           onChange={e => setDescription(e.target.value)}
-          rows={8}
-          placeholder="e.g. KA #3, Math 9 Extended, Block 4, May 2025, 50 min, GDC required. Topics: compound inequalities (2 parts), angle relationships (3 parts), special right triangles (2 parts), system of equations, graphing inequalities, and a word problem with 5 parts."
+          rows={6}
+          placeholder="e.g. KA #3, Math 9 Extended, Block 4, May 2025, 50 min, GDC required. Topics: compound inequalities (2 parts), angle relationships (3 parts), special right triangles (2 parts), system of equations, graphing inequalities, word problem with 5 parts."
           className="w-full bg-[#0d0d14] border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-700 focus:outline-none focus:border-[rgb(0,102,204)] transition-colors resize-none leading-relaxed"
         />
+
+        {/* Repository files */}
+        <div className="rounded-xl border border-white/8 bg-[#0d0d14] p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Repository Files</span>
+            {repoFiles.length > 0 && (
+              <button type="button" onClick={toggleAll}
+                className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">
+                {selectedFileIds.size === repoFiles.length ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
+          </div>
+
+          {filesLoading ? (
+            <p className="text-[11px] text-gray-600">Loading files…</p>
+          ) : repoFiles.length === 0 ? (
+            <p className="text-[11px] text-gray-600 leading-relaxed">
+              No files yet. Add curriculum docs, unit plans, or past assessments in the <span className="text-gray-400">Files</span> tab — Claude will read them when building.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {repoFiles.map(f => (
+                <FileChip key={f.id} file={f}
+                  selected={selectedFileIds.has(f.id)}
+                  onToggle={() => toggleFile(f.id)} />
+              ))}
+            </div>
+          )}
+
+          {repoFiles.length > 0 && (
+            <p className="text-[10px] text-gray-700">
+              {selectedFileIds.size} of {repoFiles.length} file{repoFiles.length !== 1 ? 's' : ''} included
+            </p>
+          )}
+        </div>
 
         {error && (
           <div className="p-3 bg-red-950/60 border border-red-800/50 rounded-lg text-red-400 text-xs leading-relaxed">
@@ -306,19 +387,19 @@ function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => 
         <button
           onClick={handleGenerate}
           disabled={isLoading || !description.trim()}
-          className="w-full py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
           style={{ background: isLoading ? 'rgb(30,30,40)' : 'rgb(0,102,204)' }}
         >
           {isLoading ? (
             <>
               <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
                 style={{ borderColor: 'rgb(0,102,204)', borderTopColor: 'transparent' }} />
-              <span className="text-gray-400">Building assessment…</span>
+              <span className="text-gray-400">Building{selectedFileIds.size > 0 ? ` with ${selectedFileIds.size} file${selectedFileIds.size !== 1 ? 's' : ''}` : ''}…</span>
             </>
           ) : (
             <>
               <span>✨</span>
-              <span>Build with AI</span>
+              <span>Build with AI{selectedFileIds.size > 0 ? ` + ${selectedFileIds.size} file${selectedFileIds.size !== 1 ? 's' : ''}` : ''}</span>
             </>
           )}
         </button>
@@ -338,7 +419,7 @@ function AiPanel({ onAssessmentReady }: { onAssessmentReady: (a: Assessment) => 
   );
 }
 
-// ─── Meta panel ──────────────────────────────────────────────────────────────
+// ─── Meta panel ───────────────────────────────────────────────────────────────
 function MetaPanel({ meta, onChange }: {
   meta: Assessment['meta'];
   onChange: <K extends keyof Assessment['meta']>(k: K, v: Assessment['meta'][K]) => void;
@@ -358,7 +439,6 @@ function MetaPanel({ meta, onChange }: {
           ))}
         </div>
       </div>
-
       <div className="grid grid-cols-2 gap-2">
         <div>
           <span className={labelCls}>Block</span>
@@ -371,19 +451,16 @@ function MetaPanel({ meta, onChange }: {
             onChange={e => onChange('assessmentNumber', Number(e.target.value))} className={inputCls} />
         </div>
       </div>
-
       <div>
         <span className={labelCls}>Month &amp; Year</span>
         <input type="text" value={meta.monthYear} onChange={e => onChange('monthYear', e.target.value)}
           placeholder="e.g. May 2025" className={inputCls} />
       </div>
-
       <div>
         <span className={labelCls}>Duration (min)</span>
         <input type="number" value={meta.durationMinutes} min={10} max={180}
           onChange={e => onChange('durationMinutes', Number(e.target.value))} className={inputCls} />
       </div>
-
       <div>
         <span className={labelCls}>Calculator</span>
         <div className="flex gap-2">
@@ -403,7 +480,7 @@ function MetaPanel({ meta, onChange }: {
   );
 }
 
-// ─── Main BuildTab ────────────────────────────────────────────────────────────
+// ─── Main BuildTab ─────────────────────────────────────────────────────────────
 export default function BuildTab({ assessment, onChange, onSaved }: Props) {
   const { meta, questions } = assessment;
   const totalMarks = computeTotalMarks(questions);
@@ -453,20 +530,17 @@ export default function BuildTab({ assessment, onChange, onSaved }: Props) {
 
   return (
     <div className="h-full flex overflow-hidden">
-
       {/* ── Column 1: AI panel ── */}
       <div className="w-80 shrink-0 border-r border-white/8 flex flex-col overflow-hidden">
         <AiPanel onAssessmentReady={handleAssessmentReady} />
       </div>
 
-      {/* ── Column 2: Meta + controls ── */}
+      {/* ── Column 2: Meta ── */}
       <aside className="w-64 shrink-0 border-r border-white/8 p-5 overflow-y-auto flex flex-col gap-5">
         <div>
           <h2 className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-4">Assessment Info</h2>
           <MetaPanel meta={meta} onChange={setMeta} />
         </div>
-
-        {/* Stats */}
         <div className="rounded-xl border border-white/8 p-3 space-y-2">
           <div className="flex justify-between text-xs">
             <span className="text-gray-500">Questions</span>
@@ -491,8 +565,6 @@ export default function BuildTab({ assessment, onChange, onSaved }: Props) {
             </span>
           </div>
         </div>
-
-        {/* Actions */}
         <div className="space-y-2">
           <button type="button" onClick={handleSave} disabled={saveState === 'saving'}
             className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
@@ -506,7 +578,7 @@ export default function BuildTab({ assessment, onChange, onSaved }: Props) {
         </div>
       </aside>
 
-      {/* ── Column 3: Question editors ── */}
+      {/* ── Column 3: Questions ── */}
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold text-gray-200">Questions</h2>
@@ -514,14 +586,12 @@ export default function BuildTab({ assessment, onChange, onSaved }: Props) {
             {questions.length} question{questions.length !== 1 ? 's' : ''} · {totalMarks} marks
           </span>
         </div>
-
         {questions.map((q, idx) => (
           <QuestionEditor key={q.id} q={q}
             onUpdate={patch => updateQuestion(idx, patch)}
             onRemove={() => removeQuestion(idx)}
             canRemove={questions.length > 1} />
         ))}
-
         <button type="button" onClick={addQuestion}
           className="w-full py-3 rounded-2xl border-2 border-dashed border-white/10 text-sm text-gray-500 hover:text-gray-300 hover:border-white/20 transition-all">
           + Add question manually

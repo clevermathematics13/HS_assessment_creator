@@ -8,8 +8,14 @@ const nextConfig = {
   },
   webpack: (config) => {
     config.resolve.alias.canvas = false;
+    // pdf-parse requires these to be externalized
+    config.externals = [
+      ...(Array.isArray(config.externals) ? config.externals : []),
+      'canvas',
+    ];
     return config;
   },
+  serverExternalPackages: ['pdf-parse', 'mammoth'],
 };
 
 export default nextConfig;

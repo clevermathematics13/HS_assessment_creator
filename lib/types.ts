@@ -5,69 +5,87 @@ export type ActionWord =
   | 'Define' | 'Explain';
 
 export type CognitiveLevel = 1 | 2 | 3;
-
 export type WorkingSpace = 'short' | 'procedural' | 'extended';
 
 export interface SubQuestion {
   id: string;
   actionWord: ActionWord;
-  prompt: string;          // plain text; AI will wrap action word in \Find etc.
+  prompt: string;
   level: CognitiveLevel;
   marks: number;
   workingSpace: WorkingSpace;
-  diagramHint: string;     // e.g. "right triangle, legs sqrt3 and sqrt6, yellow fill"
+  diagramHint: string;
   continuesOnNextPage: boolean;
 }
 
-// ─── Question ─────────────────────────────────────────────────────────────────
+// ─── Question ────────────────────────────────────────────────────────────────
 export type QuestionType =
-  | 'inequality'
-  | 'geometry'
-  | 'special-triangles'
-  | 'system-equations'
-  | 'system-inequalities'
-  | 'word-problem'
-  | 'other';
+  | 'inequality' | 'geometry' | 'special-triangles'
+  | 'system-equations' | 'system-inequalities'
+  | 'word-problem' | 'other';
 
 export interface Question {
   id: string;
   number: number;
   type: QuestionType;
-  topic: string;           // e.g. "Compound Inequalities"
-  stem: string;            // the main question text before sub-parts
+  topic: string;
+  stem: string;
   subQuestions: SubQuestion[];
 }
 
-// ─── Assessment header ────────────────────────────────────────────────────────
+// ─── Assessment header ───────────────────────────────────────────────────────
 export type CourseLevel = 'Math 9 Extended' | 'Math 9 Standard';
 
 export interface AssessmentMeta {
   course: CourseLevel;
-  block: string;           // e.g. "4"
+  block: string;
   assessmentNumber: number;
-  monthYear: string;       // e.g. "May 2025"
+  monthYear: string;
   durationMinutes: number;
   gdcRequired: boolean;
 }
 
-// ─── Full assessment ──────────────────────────────────────────────────────────
+// ─── Full assessment ─────────────────────────────────────────────────────────
 export interface Assessment {
   id: string;
   meta: AssessmentMeta;
   questions: Question[];
   createdAt: string;
   updatedAt: string;
-  // computed
   totalMarks: number;
 }
 
-// ─── Library entry (lightweight, for list views) ─────────────────────────────
+// ─── Library entry ───────────────────────────────────────────────────────────
 export interface AssessmentSummary {
   id: string;
-  title: string;           // "Math 9 Extended Block 4 — KA #2"
+  title: string;
   course: CourseLevel;
   assessmentNumber: number;
   totalMarks: number;
   questionCount: number;
   updatedAt: string;
+}
+
+// ─── File repository ─────────────────────────────────────────────────────────
+export type RepoFileType = 'pdf' | 'docx' | 'md' | 'txt' | 'tex' | 'google';
+
+export interface RepoFile {
+  id: string;
+  name: string;          // display name
+  type: RepoFileType;
+  source: 'upload' | 'google'; // how it was added
+  googleUrl?: string;    // original Google URL if source === 'google'
+  extractedText: string; // full plain-text content for Claude
+  sizeChars: number;     // char count of extractedText
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RepoFileSummary {
+  id: string;
+  name: string;
+  type: RepoFileType;
+  source: 'upload' | 'google';
+  sizeChars: number;
+  createdAt: string;
 }

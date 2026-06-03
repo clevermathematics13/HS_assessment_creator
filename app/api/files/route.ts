@@ -45,9 +45,8 @@ export async function POST(req: NextRequest) {
     name = body.name.trim();
     type = 'google';
     source = 'google';
-    googleUrl = body.googleUrl.trim();
+    googleUrl = body.googleUrl.trim() as string;
 
-    // Fetch the Google Doc export as plain text
     try {
       extractedText = await fetchGoogleDocText(googleUrl);
     } catch (err) {
@@ -65,17 +64,17 @@ export async function POST(req: NextRequest) {
 
     name = file.name;
     source = 'upload';
+    googleUrl = undefined;
 
     const ext = name.split('.').pop()?.toLowerCase() ?? '';
-    if (['pdf'].includes(ext)) type = 'pdf';
-    else if (['docx', 'doc'].includes(ext)) type = 'docx';
-    else if (['md'].includes(ext)) type = 'md';
-    else if (['tex'].includes(ext)) type = 'tex';
-    else if (['txt'].includes(ext)) type = 'txt';
-    else type = 'txt'; // fallback
+    if (ext === 'pdf') type = 'pdf';
+    else if (ext === 'docx' || ext === 'doc') type = 'docx';
+    else if (ext === 'md') type = 'md';
+    else if (ext === 'tex') type = 'tex';
+    else type = 'txt';
 
     const bytes = await file.arrayBuffer();
-    extractedText = await extractText(type, Buffer.from(bytes), name);
+    extractedText = await extractText(type, Buffer.from(bytes));
   } else {
     return Response.json({ error: 'Unsupported content type' }, { status: 415 });
   }
@@ -86,7 +85,7 @@ export async function POST(req: NextRequest) {
   const repoFile: RepoFile = {
     id, name, type, source,
     googleUrl,
-    extractedText: extractedText.slice(0, 120_000), // cap at ~120k chars
+    extractedText: extractedText.slice(0, 120_000),
     sizeChars: Math.min(extractedText.length, 120_000),
     createdAt: now,
     updatedAt: now,
@@ -99,29 +98,23 @@ export async function POST(req: NextRequest) {
 }
 
 // ─── Text extraction ─────────────────────────────────────────────────────────
-async function extractText(type: RepoFile['type'], buf: Buffer, name: string): Promise<string> {
-  if (type === 'pdf') {
-    return extractPdfText(buf);
-  }
-  if (type === 'docx') {
-    return extractDocxText(buf);
-  }
-  // md, tex, txt — all plain text
-  return buf.toString('utf-8');
+async function extractText(type: RepoFile['type'], buf: Buffer): Promise<string> {
+  if (type === 'pdf') return extractPdfText(buf);
+  if (type === 'docx') return extractDocxText(buf);
+  return buf.toString('utf-8'); // md, tex, txt
 }
 
 async function extractPdfText(buf: Buffer): Promise<string> {
   try {
-    // Use pdf-parse if available, otherwise fall back to raw buffer text
-    const pdfParse = await import('pdf-parse').then(m => m.default || m);
-    const data = await pdfParse(buf);
+    const pdfParse = await import('pdf-parse').then(m => m.default ?? m);
+    const data = await (pdfParse as (b: Buffer) => Promise<{ text: string }>)(buf);
     return data.text ?? '';
   } catch {
-    // Fallback: extract printable ASCII from PDF bytes
+    // Fallback: extract printable ASCII spans from raw bytes
     const raw = buf.toString('latin1');
     const chunks: string[] = [];
     const re = /[\x20-\x7E\n\r\t]{4,}/g;
-    let m;
+    let m: RegExpExecArray | null;
     while ((m = re.exec(raw)) !== null) chunks.push(m[0]);
     return chunks.join(' ');
   }
@@ -138,29 +131,21 @@ async function extractDocxText(buf: Buffer): Promise<string> {
 }
 
 async function fetchGoogleDocText(url: string): Promise<string> {
-  // Detect type from URL and build export URL
   let exportUrl: string;
 
   if (url.includes('docs.google.com/document')) {
-    // Google Doc → export as plain text
     const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (!idMatch) throw new Error('Could not parse Google Doc ID from URL');
     exportUrl = `https://docs.google.com/document/d/${idMatch[1]}/export?format=txt`;
   } else if (url.includes('docs.google.com/spreadsheets')) {
-    // Google Sheets → export as CSV
     const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (!idMatch) throw new Error('Could not parse Google Sheets ID from URL');
     exportUrl = `https://docs.google.com/spreadsheets/d/${idMatch[1]}/export?format=csv`;
   } else if (url.includes('docs.google.com/presentation')) {
-    // Google Slides → export as plain text
     const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (!idMatch) throw new Error('Could not parse Google Slides ID from URL');
     exportUrl = `https://docs.google.com/presentation/d/${idMatch[1]}/export/txt`;
-  } else if (url.includes('drive.google.com/file')) {
-    // Direct Drive file link — try to fetch as-is
-    exportUrl = url;
   } else {
-    // Generic URL — try to fetch
     exportUrl = url;
   }
 
